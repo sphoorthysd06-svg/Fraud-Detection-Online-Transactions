@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import base64
-import os
+from pathlib import Path
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -12,9 +12,15 @@ import os
 st.set_page_config(
     page_title="Fraud Detection Analytics",
     page_icon="🛡️",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Consistent professional chart styling, matching the Loan Default dashboard.
+px.defaults.template = "plotly_white"
+px.defaults.color_discrete_sequence = ["#356AE6", "#14A38B", "#F59E0B", "#8B5CF6", "#64748B"]
+px.defaults.width = None
+px.defaults.height = 360
 
 # ============================================================
 # LOGIN DETAILS - CHANGE THESE WHEN REQUIRED
@@ -27,43 +33,53 @@ PASSWORD = "Sony@4961"
 # FILE PATHS
 # ============================================================
 
-DATA_FILE = "Fraud_Detection_Cleaned.csv"
+DATA_FILE = Path(__file__).parent / "Fraud_Detection_Cleaned.csv"
 BACKGROUND_FILE = "Fin-Care Office.png"
 
 # ============================================================
-# BACKGROUND IMAGE
+# BACKGROUND IMAGE — LOGIN PAGE ONLY
 # ============================================================
 
-def set_background(image_file):
-    if os.path.exists(image_file):
-        with open(image_file, "rb") as file:
-            image_data = base64.b64encode(file.read()).decode()
+def set_background(image_name=BACKGROUND_FILE):
+    image_path = Path(__file__).parent / image_name
 
-        st.markdown(
-            f"""
-            <style>
-            .stApp {{
-                background-image:
-                    linear-gradient(
-                        rgba(255, 255, 255, 0.88),
-                        rgba(255, 255, 255, 0.88)
-                    ),
-                    url("data:image/png;base64,{image_data}");
-                background-size: cover;
-                background-position: center top;
-                background-repeat: no-repeat;
-                background-attachment: fixed;
-            }}
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
+    if not image_path.exists():
         st.warning(
-            f"Background image not found: {image_file}"
+            f"Background image not found: {image_name}. "
+            "Place it in the same folder as Stream.py."
         )
+        return
 
-set_background(BACKGROUND_FILE)
+    image_data = base64.b64encode(image_path.read_bytes()).decode()
+    image_mime = "image/jpeg" if image_path.suffix.lower() in [".jpg", ".jpeg"] else "image/png"
+
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-image: url("data:{image_mime};base64,{image_data}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }}
+        .main {{ background: transparent !important; }}
+        .block-container {{
+            width: 100%;
+            max-width: none;
+            background: rgba(255, 255, 255, 0.76);
+            border-radius: 15px;
+            padding: 1.5rem 2rem 2rem 2rem;
+        }}
+        .stMainBlockContainer {{
+            padding-top: 0.8rem !important;
+            padding-bottom: 1rem !important;
+        }}
+        [data-testid="stHeader"] {{ background: transparent; }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 # ============================================================
 # LOAD DATA
@@ -102,7 +118,7 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
 if "page" not in st.session_state:
-    st.session_state.page = "Home"
+    st.session_state.page = "Dashboard"
 
 # ============================================================
 # LOGIN PAGE
@@ -110,27 +126,29 @@ if "page" not in st.session_state:
 
 if not st.session_state.logged_in:
 
-    st.write("")
+    # Match the Loan Default project: background is visible only on login.
+    set_background()
 
-    left, header, right = st.columns([1, 3, 1])
+    _, header, _ = st.columns([1, 2, 1])
 
     with header:
         st.markdown(
-            "<h2 style='text-align:center;'>"
-            "🛡️ Fraud Detection in Online Transactions</h2>",
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            "<p style='text-align:center;'>"
-            "Fin-Care Starpowerz Digital Technology Pvt. Ltd."
-            "</p>",
+            """
+            <div style="text-align:center;padding-top:20px;">
+                <h1 style="font-size:19px;line-height:1.2;">
+                    🛡️ Fraud Detection in Online<br>Transactions
+                </h1>
+                <p style="font-size:10px;">
+                    Fin-Care Starpowerz Digital Technology Pvt. Ltd.
+                </p>
+            </div>
+            """,
             unsafe_allow_html=True
         )
 
     st.divider()
 
-    left, login_box, right = st.columns([1, 2, 1])
+    _, login_box, _ = st.columns([1, 1, 1])
 
     with login_box:
         st.subheader("🔐 Login")
@@ -150,7 +168,7 @@ if not st.session_state.logged_in:
 
             if user_id == USERNAME and password == PASSWORD:
                 st.session_state.logged_in = True
-                st.session_state.page = "Home"
+                st.session_state.page = "Dashboard"
                 st.rerun()
             else:
                 st.error("❌ Invalid User ID or Password.")
@@ -161,9 +179,9 @@ if not st.session_state.logged_in:
 # LOAD DATA AFTER LOGIN
 # ============================================================
 
-if not os.path.exists(DATA_FILE):
-    st.error(f"Dataset not found: {DATA_FILE}")
-    st.info("Place the CSV file in the same folder as Stream.py.")
+if not DATA_FILE.exists():
+    st.error(f"Dataset not found: {DATA_FILE.name}")
+    st.info("Place Fraud_Detection_Cleaned.csv in the same folder as Stream.py.")
     st.stop()
 
 try:
@@ -175,6 +193,20 @@ except Exception as error:
 if df.empty:
     st.error("The dataset is empty.")
     st.stop()
+
+# Match the clean dashboard styling used in the Loan Default project.
+st.markdown(
+    """
+    <style>
+    .block-container { width: 100%; max-width: none; padding: 1.4rem 2rem 2rem 2rem; }
+    [data-testid="stSidebar"] { background-color: #F4F7FB; }
+    [data-testid="stMetric"] { background: #FFFFFF; border: 1px solid #E2E8F0; padding: 14px; border-radius: 10px; }
+    h1, h2, h3 { color: #183153; }
+    div[data-testid="stPlotlyChart"] { background: #FFFFFF; border: 1px solid #E8EDF4; border-radius: 10px; padding: 8px; }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # ============================================================
 # COLUMN HELPERS
@@ -209,7 +241,6 @@ with st.sidebar:
     st.divider()
 
     pages = {
-        "🏠 Home": "Home",
         "📊 Dashboard": "Dashboard",
         "📈 Fraud Analytics": "Fraud Analytics",
         "⚠️ Risk Analysis": "Risk Analysis",
@@ -227,7 +258,7 @@ with st.sidebar:
 
     if st.button("🚪 Logout", use_container_width=True):
         st.session_state.logged_in = False
-        st.session_state.page = "Home"
+        st.session_state.page = "Dashboard"
         st.rerun()
 
 # ============================================================
